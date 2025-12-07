@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.navigation.navArgument
 import com.zincstate.fundmate.data.repository.WatchlistRepository
 import com.zincstate.fundmate.ui.detail.DetailScreen
+import com.zincstate.fundmate.ui.explore.AllSchemesScreen
 import com.zincstate.fundmate.ui.home.HomeScreen
 import com.zincstate.fundmate.ui.search.SearchScreen
 import com.zincstate.fundmate.ui.watchlist.WatchlistScreen
@@ -44,20 +45,13 @@ fun AppNavigation() {
         composable("home") {
             HomeScreen(
                 onFundClick = { code -> navController.navigate("detail/$code") },
-                onSearchClick = { navController.navigate("search") } // Add this
+                onSearchClick = { navController.navigate("search") },
+                onExploreClick = { navController.navigate("explore") },
+                onWatchlistClick = { navController.navigate("watchlist") } // Added
             )
         }
 
-        // 2. Detail Route
-        composable(
-            route = "detail/{code}",
-            arguments = listOf(navArgument("code") { type = NavType.IntType })
-        ) { backStackEntry ->
-            val code = backStackEntry.arguments?.getInt("code") ?: 0
-            Text("Detail Screen for Code: $code")
-        }
-
-        // 3. Search Route (New for Phase 2)
+        // 2. Search Route
         composable("search") {
             SearchScreen(
                 onBackClick = { navController.popBackStack() },
@@ -65,23 +59,32 @@ fun AppNavigation() {
             )
         }
 
+        // 3. Detail Route (Removed duplicate, kept the correct one)
         composable(
             route = "detail/{code}",
             arguments = listOf(navArgument("code") { type = NavType.IntType })
         ) { backStackEntry ->
             val code = backStackEntry.arguments?.getInt("code") ?: 0
-            // Use the new Screen
             DetailScreen(
                 schemeCode = code,
                 onBackClick = { navController.popBackStack() }
             )
         }
 
+        // 4. Watchlist Route
         composable("watchlist") {
             WatchlistScreen(
                 onFundClick = { code -> navController.navigate("detail/$code") }
             )
         }
+
+        // 5. Explore Route
+        composable("explore") {
+            AllSchemesScreen(
+                onFundClick = { code -> navController.navigate("detail/$code") }
+            )
+        }
+
     }
 }
 
