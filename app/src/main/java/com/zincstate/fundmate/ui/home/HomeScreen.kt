@@ -1,16 +1,17 @@
 package com.zincstate.fundmate.ui.home
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -46,7 +47,11 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    // State for the selected category filter
+    var selectedCategory by remember { mutableStateOf("All") }
+
     Scaffold(
+        containerColor = Color.White,
         topBar = {
             // Header
             Row(
@@ -58,7 +63,7 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.bullish),
+                    painter = painterResource(id = R.drawable.bullish), // Ensure you have this drawable
                     contentDescription = "Profile",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.size(40.dp)
@@ -96,36 +101,69 @@ fun HomeScreen(
                     Text(text = state.message, color = Color.Red, modifier = Modifier.align(Alignment.Center))
                 }
                 is HomeUiState.Success -> {
+
+                    // --- FILTER LOGIC (Simulated for Demo) ---
+                    // In a real app, your API would return the category type.
+                    // Here we filter based on hashcode or name just to show the list changing.
+                    val filteredList = remember(selectedCategory, state.schemes) {
+                        if (selectedCategory == "All") {
+                            state.schemes
+                        } else {
+                            // SIMULATION: Filtering arbitrarily to show UI change
+                            state.schemes.filterIndexed { index, scheme ->
+                                when (selectedCategory) {
+                                    "Large Cap" -> index % 3 == 0 // Show every 3rd item
+                                    "Mid Cap" -> index % 3 == 1   // Show different items
+                                    "Small Cap" -> index % 3 == 2
+                                    else -> true
+                                }
+                            }
+                        }
+                    }
+
                     LazyColumn(
                         contentPadding = PaddingValues(bottom = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.animateContentSize() // Smooth animation when list changes
                     ) {
-                        // 1. Top Movers Section (Gainers/Losers Grid)
+                        // 1. Top Movers Section (Always Visible)
                         item {
-                            // Pass first 8 items to simulate gainers/losers
                             val sampleList = state.schemes.take(8)
                             if (sampleList.isNotEmpty()) {
                                 TopMoversSection(schemes = sampleList, onFundClick = onFundClick)
                             }
                         }
 
-                        // 2. Section Header
+                        // 2. Category Filter Section (NEW ADDITION)
                         item {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("Explore Funds", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Column(modifier = Modifier.background(SurfaceBackground)) {
+                                Text(
+                                    text = "Explore Funds",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+
+                                CategoryFilterSection(
+                                    selectedCategory = selectedCategory,
+                                    onCategorySelected = { selectedCategory = it }
+                                )
                             }
                         }
 
-                        // 3. Main List
-                        items(state.schemes) { scheme ->
-                            Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                                FundCard(scheme, onFundClick)
+                        // 3. The Filtered List
+                        if (filteredList.isEmpty()) {
+                            item {
+                                Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                                    Text("No funds found in this category", color = TextSecondary)
+                                }
+                            }
+                        } else {
+                            items(filteredList) { scheme ->
+                                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                                    FundCard(scheme, onFundClick)
+                                }
                             }
                         }
                     }
@@ -135,7 +173,46 @@ fun HomeScreen(
     }
 }
 
-// --- NEW COMPONENT: Top Movers (Gainers/Losers) ---
+// --- NEW COMPONENT: Horizontal Category Chips ---
+@Composable
+fun CategoryFilterSection(
+    selectedCategory: String,
+    onCategorySelected: (String) -> Unit
+) {
+    val categories = listOf("All", "Large Cap", "Mid Cap", "Small Cap", "Index Funds", "Gold")
+
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+    ) {
+        items(categories) { category ->
+            val isSelected = category == selectedCategory
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50)) // Fully rounded pill shape
+                    .background(if (isSelected) PrimaryBlue else Color.White)
+                    .border(
+                        width = 1.dp,
+                        color = if (isSelected) PrimaryBlue else Color(0xFFE0E0E0),
+                        shape = RoundedCornerShape(50)
+                    )
+                    .clickable { onCategorySelected(category) }
+                    .padding(horizontal = 20.dp, vertical = 10.dp)
+            ) {
+                Text(
+                    text = category,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isSelected) Color.White else TextPrimary
+                )
+            }
+        }
+    }
+}
+
+// --- Top Movers (Gainers/Losers) ---
 @Composable
 fun TopMoversSection(schemes: List<SchemeDto>, onFundClick: (Int) -> Unit) {
     var selectedTab by remember { mutableIntStateOf(0) } // 0 = Gainers, 1 = Losers
@@ -146,7 +223,6 @@ fun TopMoversSection(schemes: List<SchemeDto>, onFundClick: (Int) -> Unit) {
             .background(Color.White)
             .padding(vertical = 16.dp)
     ) {
-        // Toggle Tabs
         Row(
             modifier = Modifier.padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -158,41 +234,17 @@ fun TopMoversSection(schemes: List<SchemeDto>, onFundClick: (Int) -> Unit) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 2x2 Grid Layout
-        // We take 4 items based on the tab.
-        // In a real app, you'd filter by positive/negative returns.
-        // Here we just slice the list for demo.
         val displayItems = if (selectedTab == 0) schemes.take(4) else schemes.drop(4).take(4)
 
         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-            // Row 1 (Items 0 and 1)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (displayItems.isNotEmpty()) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        MiniFundCard(displayItems[0], isGainer = selectedTab == 0, onClick = onFundClick)
-                    }
-                }
-                if (displayItems.size > 1) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        MiniFundCard(displayItems[1], isGainer = selectedTab == 0, onClick = onFundClick)
-                    }
-                }
+                if (displayItems.isNotEmpty()) Box(modifier = Modifier.weight(1f)) { MiniFundCard(displayItems[0], selectedTab == 0, onFundClick) }
+                if (displayItems.size > 1) Box(modifier = Modifier.weight(1f)) { MiniFundCard(displayItems[1], selectedTab == 0, onFundClick) }
             }
-
             Spacer(modifier = Modifier.height(12.dp))
-
-            // Row 2 (Items 2 and 3)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (displayItems.size > 2) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        MiniFundCard(displayItems[2], isGainer = selectedTab == 0, onClick = onFundClick)
-                    }
-                }
-                if (displayItems.size > 3) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        MiniFundCard(displayItems[3], isGainer = selectedTab == 0, onClick = onFundClick)
-                    }
-                }
+                if (displayItems.size > 2) Box(modifier = Modifier.weight(1f)) { MiniFundCard(displayItems[2], selectedTab == 0, onFundClick) }
+                if (displayItems.size > 3) Box(modifier = Modifier.weight(1f)) { MiniFundCard(displayItems[3], selectedTab == 0, onFundClick) }
             }
         }
     }
@@ -212,18 +264,12 @@ fun MoverTab(text: String, isSelected: Boolean, onClick: () -> Unit) {
             .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        Text(
-            text = text,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = if (isSelected) PrimaryBlue else TextSecondary
-        )
+        Text(text = text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (isSelected) PrimaryBlue else TextSecondary)
     }
 }
 
 @Composable
 fun MiniFundCard(scheme: SchemeDto, isGainer: Boolean, onClick: (Int) -> Unit) {
-    // Mock Random Return
     val returnVal = remember { Random.nextDouble(1.0, 10.0) }
     val sign = if (isGainer) "+" else "-"
     val color = if (isGainer) PositiveGreen else NegativeRed
@@ -231,7 +277,7 @@ fun MiniFundCard(scheme: SchemeDto, isGainer: Boolean, onClick: (Int) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(100.dp) // Fixed height for grid uniformity
+            .height(100.dp)
             .clickable { onClick(scheme.schemeCode) },
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -239,108 +285,42 @@ fun MiniFundCard(scheme: SchemeDto, isGainer: Boolean, onClick: (Int) -> Unit) {
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxSize(),
+            modifier = Modifier.padding(12.dp).fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Icon Placeholder & Name
-            Row(verticalAlignment = Alignment.Top) {
-
-                Text(
-                    text = scheme.schemeName ?: "Fund",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
-                    maxLines = 2,
-                    lineHeight = 16.sp
-                )
-            }
-
-            // Price & Returns
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom
-            ) {
-                val rawNav = scheme.nav
-                val price = if (!rawNav.isNullOrEmpty() && rawNav != "null") "₹${rawNav}" else "N/A"
-
-                Text(text = price, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-
-                Text(
-                    text = "$sign${String.format("%.2f", returnVal)}%",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = color
-                )
+            Text(text = scheme.schemeName ?: "Fund", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary, maxLines = 2, lineHeight = 16.sp)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+                Text(text = "₹${scheme.nav ?: "N/A"}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                Text(text = "$sign${String.format("%.2f", returnVal)}%", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = color)
             }
         }
     }
 }
 
-// --- EXISTING FUND CARD ---
 @Composable
 fun FundCard(scheme: SchemeDto, onClick: (Int) -> Unit) {
-    // --- MOCK DATA ---
     val mockReturn = remember { Random.nextDouble(-5.0, 15.0) }
-    // -----------------
-
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick(scheme.schemeCode) },
+        modifier = Modifier.fillMaxWidth().clickable { onClick(scheme.schemeCode) },
         colors = CardDefaults.cardColors(containerColor = Color.White),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = scheme.schemeName ?: "Unknown Fund",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                    color = TextPrimary,
-                    maxLines = 1
-                )
+                Text(text = scheme.schemeName ?: "Unknown", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextPrimary, maxLines = 1)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = scheme.fundHouse ?: "Mutual Fund",
-                    fontSize = 12.sp,
-                    color = TextSecondary
-                )
+                Text(text = scheme.fundHouse ?: "Mutual Fund", fontSize = 12.sp, color = TextSecondary)
             }
-
             Column(horizontalAlignment = Alignment.End) {
-                val rawNav = scheme.nav
-                val isValidNav = !rawNav.isNullOrEmpty() && rawNav != "null"
-
-                if (isValidNav) {
-                    Text(
-                        text = "₹$rawNav",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = TextPrimary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    val isPositive = mockReturn >= 0
-                    val sign = if (isPositive) "+" else ""
-                    Text(
-                        text = "$sign${String.format("%.2f", mockReturn)}%",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isPositive) PositiveGreen else NegativeRed
-                    )
-                } else {
-                    Text(text = "N/A", color = Color.Gray, fontSize = 14.sp)
-                }
+                Text(text = "₹${scheme.nav ?: "N/A"}", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextPrimary)
+                Spacer(modifier = Modifier.height(4.dp))
+                val isPositive = mockReturn >= 0
+                Text(text = "${if (isPositive) "+" else ""}${String.format("%.2f", mockReturn)}%", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (isPositive) PositiveGreen else NegativeRed)
             }
         }
     }

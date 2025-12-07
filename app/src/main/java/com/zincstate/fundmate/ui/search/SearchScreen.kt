@@ -27,18 +27,29 @@ fun SearchScreen(
     val results by viewModel.searchResults.collectAsState()
     val isSearching by viewModel.isSearching.collectAsState()
 
+    // BRAND COLOR (Green from your screenshot)
+    val BrandGreen = Color(0xFF00D09C)
+    val TextDark = Color(0xFF1E2226)
+
     Scaffold(
+        // FORCE BACKGROUND WHITE
+        containerColor = Color.White,
         topBar = {
-            // Search Bar Header
             TopAppBar(
-                title = { Text("Search Funds") },
+                title = { Text("Search Funds", color = TextDark) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = TextDark
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
+                    containerColor = Color.White,
+                    titleContentColor = TextDark,
+                    actionIconContentColor = TextDark
                 )
             )
         }
@@ -54,10 +65,26 @@ fun SearchScreen(
                 value = query,
                 onValueChange = viewModel::onQueryChanged,
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("e.g. HDFC, Axis, Small Cap") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                placeholder = { Text("e.g. HDFC, Axis, Small Cap", color = Color.Gray) },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = null,
+                        tint = Color.Gray
+                    )
+                },
                 singleLine = true,
-                shape = MaterialTheme.shapes.medium
+                shape = MaterialTheme.shapes.medium,
+                // FORCE LIGHT MODE COLORS FOR TEXT FIELD
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = TextDark,
+                    unfocusedTextColor = TextDark,
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    cursorColor = BrandGreen,
+                    focusedBorderColor = BrandGreen,
+                    unfocusedBorderColor = Color.LightGray
+                )
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -65,7 +92,7 @@ fun SearchScreen(
             // Loading Indicator
             if (isSearching) {
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Color(0xFF00D09C))
+                    CircularProgressIndicator(color = BrandGreen)
                 }
             }
 
@@ -87,13 +114,15 @@ fun SearchItem(scheme: SchemeDto, onClick: (Int) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick(scheme.schemeCode) },
+        // FORCE CARD WHITE
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 text = scheme.schemeName,
                 style = MaterialTheme.typography.bodyMedium,
+                // FORCE TEXT DARK
                 color = Color(0xFF1E2226)
             )
             Text(
