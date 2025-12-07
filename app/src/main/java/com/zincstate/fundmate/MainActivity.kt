@@ -17,6 +17,7 @@ import androidx.navigation.NavType
 import androidx.compose.material3.Text
 import androidx.navigation.navArgument
 import com.zincstate.fundmate.ui.home.HomeScreen
+import com.zincstate.fundmate.ui.search.SearchScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,14 +36,15 @@ fun AppNavigation() {
 
     NavHost(navController = navController, startDestination = "home") {
 
-        // HOME SCREEN
+        // 1. Home Route
         composable("home") {
-            HomeScreen(onFundClick = { code ->
-                navController.navigate("detail/$code")
-            })
+            HomeScreen(
+                onFundClick = { code -> navController.navigate("detail/$code") },
+                onSearchClick = { navController.navigate("search") } // Add this
+            )
         }
 
-        // DETAIL SCREEN
+        // 2. Detail Route
         composable(
             route = "detail/{code}",
             arguments = listOf(navArgument("code") { type = NavType.IntType })
@@ -50,5 +52,14 @@ fun AppNavigation() {
             val code = backStackEntry.arguments?.getInt("code") ?: 0
             Text("Detail Screen for Code: $code")
         }
+
+        // 3. Search Route (New for Phase 2)
+        composable("search") {
+            SearchScreen(
+                onBackClick = { navController.popBackStack() },
+                onFundClick = { code -> navController.navigate("detail/$code") }
+            )
+        }
     }
 }
+

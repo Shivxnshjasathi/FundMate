@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,7 +23,9 @@ import com.zincstate.fundmate.data.model.SchemeDto
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = viewModel(),
-    onFundClick: (Int) -> Unit
+    onFundClick: (Int) -> Unit,
+    onSearchClick: () -> Unit
+
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -51,6 +55,11 @@ fun HomeScreen(
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1E2226)
                 )
+                Spacer(modifier = Modifier.weight(1f)) // Push icon to right
+                IconButton(onClick = onSearchClick) {
+                    Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.Gray)
+                }
+
             }
         }
     ) { padding ->

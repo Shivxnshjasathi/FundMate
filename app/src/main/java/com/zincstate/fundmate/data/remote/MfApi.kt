@@ -22,14 +22,16 @@ interface MfApi {
     suspend fun getSchemeDetails(
         @Path("code") code: Int
     ): FundDetailResponse
+
+    @GET("mf/search")
+    suspend fun searchSchemes(
+        @Query("q") query: String
+    ): List<SchemeDto>
 }
 
 // Simple Singleton for Phase 1 (We will move to Hilt in Phase 6)
 object RetrofitClient {
     private const val BASE_URL = "https://api.mfapi.in/"
-
-   //private const val BASE_URL = "[https://api.mfapi.in/](https://api.mfapi.in/)"
-
     val api: MfApi by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
