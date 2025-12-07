@@ -16,13 +16,16 @@ import androidx.navigation.compose.composable
 import androidx.navigation.NavType
 import androidx.compose.material3.Text
 import androidx.navigation.navArgument
+import com.zincstate.fundmate.data.repository.WatchlistRepository
 import com.zincstate.fundmate.ui.detail.DetailScreen
 import com.zincstate.fundmate.ui.home.HomeScreen
 import com.zincstate.fundmate.ui.search.SearchScreen
+import com.zincstate.fundmate.ui.watchlist.WatchlistScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WatchlistRepository.initialize(applicationContext)
         enableEdgeToEdge()
         setContent {
             FundmateTheme {
@@ -74,17 +77,11 @@ fun AppNavigation() {
             )
         }
 
-//        composable(
-//            route = "detail/{code}",
-//            arguments = listOf(navArgument("code") { type = NavType.IntType })
-//        ) { backStackEntry ->
-//            val code = backStackEntry.arguments?.getInt("code") ?: 0
-//            // Use the new Screen
-//            DetailScreen(
-//                schemeCode = code,
-//                onBackClick = { navController.popBackStack() }
-//            )
-//        }
+        composable("watchlist") {
+            WatchlistScreen(
+                onFundClick = { code -> navController.navigate("detail/$code") }
+            )
+        }
     }
 }
 

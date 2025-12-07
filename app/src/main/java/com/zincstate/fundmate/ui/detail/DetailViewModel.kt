@@ -5,14 +5,14 @@ import androidx.lifecycle.viewModelScope
 import com.zincstate.fundmate.data.model.FundDetailResponse
 import com.zincstate.fundmate.data.model.NavDataDto
 import com.zincstate.fundmate.data.remote.RetrofitClient
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import com.zincstate.fundmate.data.repository.WatchlistRepository
+import com.zincstate.fundmate.data.local.WatchlistEntity
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
-// Enum for Time Ranges
+// Time ranges
 enum class TimeRange(val label: String, val days: Int) {
     ONE_MONTH("1M", 30),
     SIX_MONTHS("6M", 180),
@@ -21,14 +21,16 @@ enum class TimeRange(val label: String, val days: Int) {
     ALL("ALL", Int.MAX_VALUE)
 }
 
+// UI State
 sealed interface DetailUiState {
     object Loading : DetailUiState
     data class Success(
         val fundDetails: FundDetailResponse,
-        val chartData: List<NavDataDto>, // Filtered data for the chart
+        val chartData: List<NavDataDto>,
         val selectedRange: TimeRange,
-        val returnPercentage: Double // Calculated return
+        val returnPercentage: Double
     ) : DetailUiState
+
     data class Error(val message: String) : DetailUiState
 }
 
@@ -37,30 +39,81 @@ class DetailViewModel : ViewModel() {
     private val _uiState = MutableStateFlow<DetailUiState>(DetailUiState.Loading)
     val uiState: StateFlow<DetailUiState> = _uiState.asStateFlow()
 
+    // -------------------------------
+    // WATCHLIST STATE
+    // -------------------------------
+    private val _isSaved = MutableStateFlow(false)
+    val isSaved: StateFlow<Boolean> = _isSaved.asStateFlow()
+
+    private var currentCode: Int? = null
+
     private var fullHistory: List<NavDataDto> = emptyList()
     private var cachedResponse: FundDetailResponse? = null
 
+
     fun fetchFundDetails(code: Int) {
+        currentCode = code
+
+        // Observe DB Watchlist State
         viewModelScope.launch {
-            _uiState.value = DetailUiState.Loading
+            WatchlistRepository.isWatchlisted(code)
+                .collect { saved ->
+                    _isSaved.value = saved
+                }
+        }
+
+        // Fetch fund details & history
+        viewModelScope.launch {
             try {
+                _uiState.value = DetailUiState.Loading
+
                 val response = RetrofitClient.api.getSchemeHistory(code)
                 cachedResponse = response
 
-                // Parse dates and sort (API usually gives newest first)
-                val dateFormat = SimpleDateFormat("dd-MM-yyyy", Locale.ENGLISH)
+                val df = SimpleDateFormat("dd-MM-yyyy", Locale.ENGLISH)
                 fullHistory = response.data.sortedBy {
-                    dateFormat.parse(it.date)?.time ?: 0L
+                    df.parse(it.date)?.time ?: 0L
                 }
 
-                // Default to 1 Year view
+                // Default 1Y view
                 filterData(TimeRange.ONE_YEAR)
+
             } catch (e: Exception) {
-                _uiState.value = DetailUiState.Error("Failed to load details: ${e.message}")
+                _uiState.value = DetailUiState.Error("Failed: ${e.message}")
             }
         }
     }
 
+    // -------------------------------
+    // TOGGLE SAVE (WATCHLIST ADD/REMOVE)
+    // -------------------------------
+    fun toggleSave() {
+        val code = currentCode ?: return
+
+        viewModelScope.launch {
+
+            val response = cachedResponse ?: return@launch
+            val meta = response.meta
+            val latest = fullHistory.lastOrNull()
+
+            val entity = WatchlistEntity(
+                schemeCode = meta.schemeCode,
+                schemeName = meta.schemeName,
+                fundHouse = meta.fundHouse ?: "",
+                nav = latest?.nav ?: "0.0",
+                date = latest?.date ?: ""
+            )
+
+            WatchlistRepository.toggleWatchlist(
+                entity = entity,
+                isSaved = isSaved.value
+            )
+        }
+    }
+
+    // -------------------------------
+    // TIME RANGE LOGIC
+    // -------------------------------
     fun onTimeRangeSelected(range: TimeRange) {
         filterData(range)
     }
@@ -68,25 +121,21 @@ class DetailViewModel : ViewModel() {
     private fun filterData(range: TimeRange) {
         val response = cachedResponse ?: return
 
-        // Simple logic: Take the last N items (approx) or filter by date
-        // For simplicity in Phase 3, we'll take items based on days (assuming 1 item per day)
-        // A real app would compare Date objects.
-
-        val filteredList = if (range == TimeRange.ALL) {
+        val filtered = if (range == TimeRange.ALL) {
             fullHistory
         } else {
             fullHistory.takeLast(range.days)
         }
 
-        if (filteredList.isEmpty()) return
+        if (filtered.isEmpty()) return
 
-        val startNav = filteredList.first().nav.toDouble()
-        val endNav = filteredList.last().nav.toDouble()
-        val returns = ((endNav - startNav) / startNav) * 100
+        val start = filtered.first().nav.toDouble()
+        val end = filtered.last().nav.toDouble()
+        val returns = ((end - start) / start) * 100
 
         _uiState.value = DetailUiState.Success(
             fundDetails = response,
-            chartData = filteredList,
+            chartData = filtered,
             selectedRange = range,
             returnPercentage = returns
         )
