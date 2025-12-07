@@ -27,6 +27,11 @@ interface MfApi {
     suspend fun searchSchemes(
         @Query("q") query: String
     ): List<SchemeDto>
+
+    @GET("mf/{code}")
+    suspend fun getSchemeHistory(
+        @Path("code") code: Int
+    ): FundDetailResponse
 }
 
 // Simple Singleton for Phase 1 (We will move to Hilt in Phase 6)

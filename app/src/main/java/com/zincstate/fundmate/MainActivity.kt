@@ -16,6 +16,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.NavType
 import androidx.compose.material3.Text
 import androidx.navigation.navArgument
+import com.zincstate.fundmate.ui.detail.DetailScreen
 import com.zincstate.fundmate.ui.home.HomeScreen
 import com.zincstate.fundmate.ui.search.SearchScreen
 
@@ -60,6 +61,30 @@ fun AppNavigation() {
                 onFundClick = { code -> navController.navigate("detail/$code") }
             )
         }
+
+        composable(
+            route = "detail/{code}",
+            arguments = listOf(navArgument("code") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val code = backStackEntry.arguments?.getInt("code") ?: 0
+            // Use the new Screen
+            DetailScreen(
+                schemeCode = code,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+//        composable(
+//            route = "detail/{code}",
+//            arguments = listOf(navArgument("code") { type = NavType.IntType })
+//        ) { backStackEntry ->
+//            val code = backStackEntry.arguments?.getInt("code") ?: 0
+//            // Use the new Screen
+//            DetailScreen(
+//                schemeCode = code,
+//                onBackClick = { navController.popBackStack() }
+//            )
+//        }
     }
 }
 

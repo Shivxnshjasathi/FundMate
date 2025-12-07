@@ -72,4 +72,9 @@ dependencies {
 
     // 5. Icons (Optional, for UI polish)
     implementation("androidx.compose.material:material-icons-extended:1.6.0")
+
+    val room_version = "2.6.1"
+    implementation("androidx.room:room-runtime:$room_version")
+    implementation("androidx.room:room-ktx:$room_version")
+    implementation("androidx.room:room-compiler:$room_version")
 }
